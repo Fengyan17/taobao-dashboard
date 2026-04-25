@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>淘宝畜牧宠物品类数据看板</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0f1a;color:#e2e8f0;min-height:100vh}
+.top-bar{display:flex;align-items:center;padding:16px 32px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06);gap:16px;flex-wrap:wrap}
+.top-bar .title{font-size:16px;font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.top-bar .sub{font-size:12px;color:#475569;margin-top:2px}
+.right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.sync-info{font-size:12px;color:#475569}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;border-radius:10px;color:white;font-size:13px;cursor:pointer;transition:opacity .2s}
+.btn:hover{opacity:.88}.btn:disabled{opacity:.5;cursor:not-allowed}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:20px 32px}
+.kpi-card{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px 24px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(59,130,246,0.15)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0}
+.kpi-card:nth-child(1)::before{background:linear-gradient(90deg,#3b82f6,#6366f1)}
+.kpi-card:nth-child(2)::before{background:linear-gradient(90deg,#10b981,#06b6d4)}
+.kpi-card:nth-child(3)::before{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+.kpi-card:nth-child(4)::before{background:linear-gradient(90deg,#8b5cf6,#ec4899)}
+.kpi-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.kpi-value{font-size:30px;font-weight:800;color:#f1f5f9;line-height:1}
+.kpi-sub{font-size:12px;color:#475569;margin-top:6px}
+.filter-bar{display:flex;gap:10px;padding:0 32px 16px;align-items:center;flex-wrap:wrap}
+.filter-bar span{font-size:13px;color:#64748b}
+.filter-btn{padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#94a3b8;font-size:12px;cursor:pointer;transition:all .2s}
+.filter-btn.active,.filter-btn:hover{background:rgba(59,130,246,0.2);border-color:#3b82f6;color:#60a5fa}
+select{background:#1e293b;color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 12px;font-size:12px}
+.tabs{display:flex;padding:0 32px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.tab{padding:10px 20px;font-size:13px;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab.active{color:#60a5fa;border-bottom-color:#3b82f6}
+.tab:hover:not(.active){color:#94a3b8}
+.chart-section{padding:20px 32px}
+.chart-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:24px}
+.chart-title{font-size:14px;font-weight:600;color:#cbd5e1;margin-bottom:16px}
+#chart1,#chart2{width:100%;height:300px}
+.table-section{padding:0 32px 32px}
+.table-wrap{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#475569;text-align:left;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;white-space:nowrap}
+th:hover{color:#94a3b8}
+td{padding:11px 16px;font-size:13px;color:#cbd5e1;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:rgba(59,130,246,0.15);color:#60a5fa}
+.gmv{color:#10b981;font-weight:600}
+.mh{color:#10b981;font-weight:600}
+.mm{color:#f59e0b;font-weight:600}
+.ml{color:#ef4444;font-weight:600}
+.center{padding:80px;text-align:center;color:#475569}
+.center .e{font-size:40px;margin-bottom:12px}
+.hint{font-size:12px;color:#64748b;margin-top:10px;line-height:1.6}
+@media(max-width:768px){.kpi-row{grid-template-columns:repeat(2,1fr);padding:16px}.top-bar,.filter-bar,.chart-section,.table-section{padding-left:16px;padding-right:16px}.tabs{padding:0 16px}}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+<div>
+<div class="title">🐾 淘宝畜牧宠物品类数据看板</div>
+<div class="sub">运营数据 · 自动联动飞书多维表格</div>
+</div>
+<div class="right">
+<span class="sync-info" id="syncInfo">点击刷新读取最新数据</span>
+<button class="btn" id="syncBtn" onclick="loadData()">🔄 刷新数据</button>
+</div>
+</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="filter-bar">
+<span>日期：</span>
+<button class="filter-btn active" onclick="setRange('all')">全部</button>
+<button class="filter-btn" onclick="setRange(7)">近7天</button>
+<button class="filter-btn" onclick="setRange(30)">近30天</button>
+<span style="margin-left:8px">类目：</span>
+<select id="catFilter" onchange="renderAll()"><option value="">全部类目</option></select>
+</div>
+
+<div class="tabs">
+<div class="tab active" onclick="switchTab(0)">📈 时间趋势</div>
+<div class="tab" onclick="switchTab(1)">📊 类目分析</div>
+<div class="tab" onclick="switchTab(2)">📋 商品明细</div>
+</div>
+
+<div id="loadingWrap" class="center">
+<div class="e">⏳</div>
+<p>正在从飞书读取数据...</p>
+<button class="btn" onclick="loadData()">重试</button>
+</div>
+
+<div id="errorWrap" class="center" style="display:none">
+<div class="e">⚠️</div>
+<p id="errorMsg">加载失败</p>
+<button class="btn" onclick="loadData()">重试</button>
+<div class="hint" id="errorHint"></div>
+</div>
+
+<div id="contentWrap" style="display:none">
+<div id="tab0" class="chart-section"><div class="chart-card"><div class="chart-title">每日 GMV 与订单量趋势</div><div id="chart1"></div></div></div>
+<div id="tab1" class="chart-section" style="display:none"><div class="chart-card"><div class="chart-title">各一级类目 GMV &amp; 订单量对比</div><div id="chart2"></div></div></div>
+<div id="tab2" class="table-section" style="display:none">
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th onclick="sort('product_name')">商品名称 ↕</th>
+<th onclick="sort('category1')">类目</th>
+<th onclick="sort('order_quantity')">订单量 ↕</th>
+<th onclick="sort('gmv')">GMV ↕</th>
+<th onclick="sort('gross_margin')">毛利率 ↕</th>
+<th onclick="sort('record_date')">日期 ↕</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+
+<script>
+const APP_ID='cli_a96de91b347adbca';
+const APP_SECRET='WKReDrc4liZAL1VeyaGpJbvFciVoA3so';
+const APP_TOKEN='HYBZbRUxnaXkhksHBRCcbDrUn1c';
+const TABLE_ID='tbl7Tuq9P9if57Ax';
+const FM={
+pn:'fldKiJX2lC',c1:'fldLARuK2d',c2:'fldjWXInBQ',c3:'fld8ANC3d4',
+oq:'fldlxrAa1n',gm:'fld3RXlznY',gr:'fldAYaVwAC',rd:'fld5tLluBt'
+};
+let all=[],curR='all',curC='',sK='gmv',sD=-1,ch1,ch2;
+
+function tsD(v){
+if(!v)return'';
+const n=Number(v);
+if(isNaN(n))return String(v);
+const d=new Date(n);
+return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+async function loadData(){
+const btn=document.getElementById('syncBtn');
+const lE=document.getElementById('loadingWrap');
+const eE=document.getElementById('errorWrap');
+const cE=document.getElementById('contentWrap');
+btn.disabled=true;
+lE.style.display='block';eE.style.display='none';cE.style.display='none';
+try{
+const auth=await fetch('https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal',{
+method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({app_id:APP_ID,app_secret:APP_SECRET})
+}).then(r=>r.json());
+if(auth.code!==0)throw new Error('获取token失败：'+auth.msg);
+const token=auth.app_access_token;
+let records=[],pt='';
+do{
+let u='https://open.feishu.cn/open-apis/bitable/v1/apps/'+APP_TOKEN+'/tables/'+TABLE_ID+'/records?page_size=500';
+if(pt)u+='&page_token='+pt;
+const r=await fetch(u,{headers:{'Authorization':'Bearer '+token}}).then(r=>r.json());
+if(r.code!==0)throw new Error('读取数据失败：'+r.msg);
+records=records.concat(r.data.items||[]);
+pt=r.data.page_token||'';
+if(!r.data.has_more)break;
+}while(pt);
+all=records.map(it=>{
+const f=it.fields;
+return{
+pn:String(f[FM.pn]||''),
+c1:String(f[FM.c1]||''),
+c2:String(f[FM.c2]||''),
+c3:String(f[FM.c3]||''),
+oq:Number(f[FM.oq])||0,
+gm:Number(f[FM.gm])||0,
+gr:Number(f[FM.gr])||0,
+rd:tsD(f[FM.rd])
+};
+}).filter(r=>r.pn);
+initCats();renderAll();
+document.getElementById('syncInfo').textContent=all.length+'条数据 · '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+'更新';
+lE.style.display='none';cE.style.display='block';
+}catch(e){
+lE.style.display='none';eE.style.display='block';
+document.getElementById('errorMsg').textContent=e.message;
+document.getElementById('errorHint').innerHTML='可能原因：①飞书应用权限未开通 ②公司管理员未审批 ③网络无法访问飞书';
+}finally{btn.disabled=false}
+}
+
+function initCats(){
+const cats=[...new Set(all.map(r=>r.c1))];
+document.getElementById('catFilter').innerHTML='<option value="">全部类目</option>'+cats.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+}
+
+function setRange(d){
+curR=d;
+document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+event.target.classList.add('active');
+renderAll();
+}
+
+function switchTab(i){
+document.querySelectorAll('.tab').forEach((t,n)=>t.classList.toggle('active',n===i));
+['tab0','tab1','tab2'].forEach((id,n)=>document.getElementById(id).style.display=n===i?'block':'none');
+setTimeout(()=>{if(i===0&&ch1)ch1.resize();if(i===1&&ch2)ch2.resize()},10);
+}
+
+function filt(){
+let d=[...all];
+if(curR!=='all'){
+const c=new Date();c.setDate(c.getDate()-curR);
+d=d.filter(r=>new Date(r.rd)>=c);
+}
+if(curC)d=d.filter(r=>r.c1===curC);
+return d;
+}
+
+function renderAll(){renderKPI(filt());renderC1(filt());renderC2(filt());renderT(filt())}
+
+function renderKPI(d){
+const o=d.reduce((s,r)=>s+r.oq,0);
+const g=d.reduce((s,r)=>s+r.gm,0);
+const m=d.length?(d.reduce((s,r)=>s+r.gr,0)/d.length).toFixed(1):'0';
+const items=[
+['总订单量',o.toLocaleString(),'件','#3b82f6'],
+['总GMV','¥'+g.toLocaleString(),'','#10b981'],
+['平均毛利率',m+'%','','#f59e0b'],
+['商品数量',d.length,'个','#8b5cf6']
+];
+document.getElementById('kpiRow').innerHTML=items.map(([l,v,u,c])=>{
+return '<div class="kpi-card"><div class="kpi-label">'+l+'</div><div class="kpi-value" style="color:'+c+'">'+v+'</div>'+(u?'<div class="kpi-sub">'+u+'</div>':'')+'</div>';
+}).join('');
+}
+
+function renderC1(d){
+const bd={};
+d.forEach(r=>{
+if(!bd[r.rd])bd[r.rd]={g:0,o:0};
+bd[r.rd].g+=r.gm;bd[r.rd].o+=r.oq;
+});
+const ds=Object.keys(bd).sort();
+if(!ch1)ch1=echarts.init(document.getElementById('chart1'));
+ch1.setOption({
+backgroundColor:'transparent',
+tooltip:{trigger:'axis',backgroundColor:'#1e293b',borderColor:'#334155',textStyle:{color:'#e2e8f0'},formatter:p=>p[0].name+'<br>GMV: ¥'+p[0].value.toLocaleString()+'<br>订单量: '+p[1].value+'件'},
+legend:{data:['GMV','订单量'],textStyle:{color:'#64748b'},top:0},
+grid:{left:60,right:20,top:40,bottom:30},
+xAxis:{type:'category',data:ds.map(d=>d.slice(5)),axisLine:{lineStyle:{color:'#334155'}},axisLabel:{color:'#64748b'},splitLine:{show:false}},
+yAxis:[
+{type:'value',name:'GMV(元)',axisLine:{lineStyle:{color:'#334155'}},axisLabel:{color:'#64748b',formatter:v=>'¥'+(v>=1000?v/1000+'k':v)},splitLine:{lineStyle:{color:'rgba(255,255,255,0.05)'}}},
+{type:'value',name:'订单量',axisLine:{lineStyle:{color:'#334155'}},axisLabel:{color:'#64748b'},splitLine:{show:false}}
+],
+series:[
+{name:'GMV',type:'line',data:ds.map(d=>bd[d].g),smooth:true,lineStyle:{color:'#10b981',width:3},itemStyle:{color:'#10b981'},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(16,185,129,0.3)'},{offset:1,color:'rgba(16,185,129,0)'}]}},symbol:'circle',symbolSize:6},
+{name:'订单量',type:'line',yAxisIndex:1,data:ds.map(d=>bd[d].o),smooth:true,lineStyle:{color:'#3b82f6',width:3},itemStyle:{color:'#3b82f6'},symbol:'circle',symbolSize:6}
+]
+},true);
+}
+
+function renderC2(d){
+const bc={};
+d.forEach(r=>{
+if(!bc[r.c1])bc[r.c1]={g:0,o:0};
+bc[r.c1].g+=r.gm;bc[r.c1].o+=r.oq;
+});
+const cs=Object.keys(bc).sort((a,b)=>bc[b].g-bc[a].g);
+if(!ch2)ch2=echarts.init(document.getElementById('chart2'));
+ch2.setOption({
+backgroundColor:'transparent',
+tooltip:{trigger:'axis',backgroundColor:'#1e293b',borderColor:'#334155',textStyle:{color:'#e2e8f0'},formatter:p=>p[0].name+'<br>GMV: ¥'+p[0].value.toLocaleString()+'<br>订单量: '+p[1].value+'件'},
+legend:{data:['GMV','订单量'],textStyle:{color:'#64748b'},top:0},
+grid:{left:110,right:20,top:40,bottom:60},
+xAxis:{type:'value',axisLine:{lineStyle:{color:'#334155'}},axisLabel:{color:'#64748b',formatter:v=>'¥'+(v>=1000?v/1000+'k':v)},splitLine:{lineStyle:{color:'rgba(255,255,255,0.05)'}}},
+yAxis:{type:'category',data:cs,axisLine:{lineStyle:{color:'#334155'}},axisLabel:{color:'#94a3b8',fontSize:12},splitLine:{show:false}},
+series:[
+{name:'GMV',type:'bar',data:cs.map(c=>bc[c].g),itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'#3b82f6'},{offset:1,color:'#8b5cf6'}]}},barWidth:22},
+{name:'订单量',type:'bar',data:cs.map(c=>bc[c].o),itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'#10b981'},{offset:1,color:'#06b6d4'}]}},barWidth:22}
+]
+},true);
+}
+
+function renderT(d){
+const s=[...d].sort((a,b)=>{
+const av=a[sK],bv=b[sK];
+return typeof av==='number'?sD*(av-bv):sD*String(av).localeCompare(String(bv));
+});
+document.getElementById('tableBody').innerHTML=s.map(r=>{
+const m=r.gr,mc=m>=50?'mh':m>=35?'mm':'ml';
+return '<tr><td>'+r.pn+'</td><td><span class="tag">'+r.c1+'</span></td><td>'+r.oq.toLocaleString()+'</td><td class="gmv">¥'+r.gm.toLocaleString()+'</td><td class="'+mc+'">'+m+'%</td><td>'+r.rd+'</td></tr>';
+}).join('');
+}
+
+function sort(k){if(sK===k)sD*=-1;else{sK=k;sD=-1};renderT(filt())}
+document.getElementById('catFilter').addEventListener('change',e=>{curC=e.target.value;renderAll()});
+window.addEventListener('resize',()=>{ch1&&ch1.resize();ch2&&ch2.resize()});
+loadData();
+</script>
+</body>
+</html>
